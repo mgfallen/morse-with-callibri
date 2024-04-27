@@ -1,0 +1,3 @@
+pip install pyneurosdk2
+pip install numpy
+pip install PyQt5 matplotlib
