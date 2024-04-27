@@ -1,3 +1,9 @@
+Как запустить проект?
+- python -m venv myenv (устанавливаем виртуальное окружение)
+- myenv\Scripts\activate (активируем виртуальное окружение)
+- pip install -r /core/requirements.txt
+- python core/callibri.py 
+
 TODO 
 - добавить README
 - добавить интерфейс для пользователя
