@@ -2,6 +2,7 @@
 - python -m venv myenv (устанавливаем виртуальное окружение)
 - myenv\Scripts\activate (активируем виртуальное окружение)
 - pip install -r /core/requirements.txt
+- Подключить датчик callbri через bluetooth
 - python core/callibri.py 
 
 TODO 
