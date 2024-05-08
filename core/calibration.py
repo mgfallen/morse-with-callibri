@@ -35,9 +35,9 @@ pygame.font.init()
 
 ###### Greeting ######
 screen = pygame.display.set_mode((WIDTH,HEIGHT))
-screen.fill(BLACK)  
 font: pygame.font.Font = pygame.font.SysFont(pygame.font.get_default_font(), WIDTH*HEIGHT//20000)
 GREETING_TEXT = "Для начала пройдите калибровку.\nСледуйте указаниям. Чтобы продолжить, нажмите любую клавишу!"
+screen.fill(BLACK)  
 draw_text_in_the_middle(GREETING_TEXT, WHITE, screen, font)
 pygame.display.flip()
 
@@ -51,11 +51,40 @@ while greeting:
             greeting = False
 
 ###### Getting noise value ######
+NO_BLINKING_TIME = 7
+PREPARING_FOR_NO_BLINKING_TEXT = (f"Вам нужно будет не моргать и сидеть спокойно {NO_BLINKING_TIME} секунд.\n "
+                                   "Как будете готовы, нажмите любую клавишу.")
+NO_BLINKING_TEXT = ("Не моргайте. Осталось time_left секунд..")
+screen.fill(BLACK)
+draw_text_in_the_middle(PREPARING_FOR_NO_BLINKING_TEXT, WHITE, screen, font)
+pygame.display.flip()
 
+#preparing
+preparing_for_no_blinking = True
+while preparing_for_no_blinking:
+    for event in pygame.event.get():
+        if event.type == pygame.QUIT or (event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE):
+            pygame.quit()
+            sys.exit(0)
+        elif event.type == pygame.KEYDOWN:
+            preparing_for_no_blinking = False
+
+#getting noise value
+noise_data = []
+for time_left in range(NO_BLINKING_TIME,0, -1):
+    screen.fill(ORANGE)
+    draw_text_in_the_middle(NO_BLINKING_TEXT.replace('time_left',str(time_left)), WHITE, screen, font)
+    pygame.display.flip()
+    noise_data.extend(get_signal(SAMPLING_FREQUENCY, 1))
+noise_value = np.mean(noise_data)
+
+#TODO: Check that user was calm by standard deviation or something
 
 ###### Getting thresholds ######
-PROMPTING_DOT_BLINK_TEXT = "Моргните слабо для обозначения точки"
-PROMPTING_DASH_BLINK_TEXT = "Моргните сильно для обозначения тире"
+PREPARING_FOR_CALIBRATION_TEXT = "Далее вам нужно будет моргать для обозначения точек или тире. \n" \
+                            "Как будете готовы, нажмите любую клавишу."
+PROMPTING_DOT_BLINK_TEXT = "." + '\n'*7 + '(точка)'
+PROMPTING_DASH_BLINK_TEXT = "-" + '\n'*7 + '(тире)'
 USER_ACCURACY = ("Ваша погрешность моргания для точки: dot_blink_error.\n"
                 "Для тире: dash_blink_error\n"
                 "Чтобы продолжить, нажмите Пробел.\n"
@@ -69,6 +98,20 @@ OPTIMAL_CONVERGENCE = 30 # optimal difference between two epochs. low convergenc
 OPTIMAL_ITERATIONS = 5 # user will likely start giving persistent blinks within this iteration amount
 ITERATION_SIZE = 10 # amount of prompted dash or dots within an iteration
 
+#preparing
+screen.fill(BLACK)
+draw_text_in_the_middle(PREPARING_FOR_CALIBRATION_TEXT, WHITE, screen, font)
+pygame.display.flip()
+
+preparing_for_calibration = True
+while preparing_for_calibration:
+    for event in pygame.event.get():
+        if event.type == pygame.QUIT or (event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE):
+            pygame.quit()
+            sys.exit(0)
+        elif event.type == pygame.KEYDOWN:
+            preparing_for_calibration = False
+
 dot_threshold = 0
 dash_threshold = 0
 
@@ -79,6 +122,7 @@ dash_threshold_peaks = []
 dot_blink_error = 1000
 dash_blink_error = 1000
 
+#calibrating
 calibrating = True
 while calibrating:
     for epoch in range(ITERATION_SIZE):
