@@ -1,8 +1,18 @@
+import neurosdk.scanner
+from callibri import sensorFound # do not run 'import callibri' because there is no entry point
+import neurosdk
 import numpy as np
 import pygame
 import sys
 import time
 
+pygame.init()
+pygame.font.init()
+
+scanner = neurosdk.scanner.Scanner
+scanner.sensorsChanged = 
+scanner.start()  
+    
 WIDTH, HEIGHT = (1200, 800)
 SAMPLING_FREQUENCY = 9600
 BLACK = (0,0,0)
@@ -16,7 +26,8 @@ def draw_text_in_the_middle(text: str,
                             color: pygame.Color | tuple[int,int,int],
                             screen: pygame.Surface, 
                             font: pygame.font.Font) -> None:
-    """Text with newlines will be separated by lines(by default pygame ignores \\n)"""
+    """Note: newlines supported, although pygame doesn't"""
+
     text_lines = text.split('\n')
     WIDTH, HEIGHT = screen.get_size()
     for i, line in enumerate(text_lines):
@@ -25,13 +36,13 @@ def draw_text_in_the_middle(text: str,
             font.render(line, True, WHITE),
             ((WIDTH - line_size[0])//2, (HEIGHT + line_size[1] * i * 2)//2)
             ) 
+        
+        
 def get_signal(sampling_frequency, size ,*args, **kwargs):
     print("Imitating of receiving signal...")
     time.sleep(size)
     return np.random.uniform(0, 100, (int(sampling_frequency * size),))
 
-pygame.init()
-pygame.font.init()
 
 ###### Greeting ######
 screen = pygame.display.set_mode((WIDTH,HEIGHT))
@@ -78,7 +89,7 @@ for time_left in range(NO_BLINKING_TIME,0, -1):
     noise_data.extend(get_signal(SAMPLING_FREQUENCY, 1))
 noise_value = np.mean(noise_data)
 
-#TODO: Check that user was calm by standard deviation or something
+#TODO: Check that user really was calm by standard deviation or something
 
 ###### Getting thresholds ######
 PREPARING_FOR_CALIBRATION_TEXT = "Далее вам нужно будет моргать для обозначения точек или тире. \n" \

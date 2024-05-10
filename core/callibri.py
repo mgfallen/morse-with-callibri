@@ -245,18 +245,18 @@ def on_callibri_signal_data_received(sensor, data):
                 edfCount += 1
 
                 # TODO это значение сигнала является нашей метрикой о "секундном" интервале
-                signal_rms = np.sqrt(np.mean(np.square(bSignal)))
+                # signal_rms = np.sqrt(np.mean(np.square(bSignal)))
 
-                if edfCount % 2 != 0:
-                    print("===============")
-                    print(f"   Моргайте    {signal_rms}")
-                    print("===============")
+                # if edfCount % 2 != 0:
+                #     print("===============")
+                #     print(f"   Моргайте    {signal_rms}")
+                #     print("===============")
 
-                if edfCount % 2 == 0:
-                    if signal_rms > strong_signal_threshold:
-                        print(f">>>>ТИРЕ<<<< {signal_rms}")
-                    elif signal_rms > weak_signal_threshold:
-                        print(f"====ТОЧКА==== {signal_rms}")
+                # if edfCount % 2 == 0:
+                #     if signal_rms > strong_signal_threshold:
+                #         print(f">>>>ТИРЕ<<<< {signal_rms}")
+                #     elif signal_rms > weak_signal_threshold:
+                #         print(f"====ТОЧКА==== {signal_rms}")
 
                 curPos = 0
 
@@ -302,7 +302,7 @@ scanner.start()
 
 while(True):
     time.sleep(1)
-    if (doStart):      
+    if (doStart):
        time.sleep(1)
        start_record()
        doStart = False
