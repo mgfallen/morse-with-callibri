@@ -189,7 +189,7 @@ while calibrating:
     print('peaks',dot_threshold_peaks, dash_threshold_peaks)
     print()
     draw_text_in_the_middle(
-        USER_ACCURACY.replace("dot_blink_error", str(dot_convergence)).replace("dash_blink_error", str(dash_convergence)) + '\n' + accuracy_report,
+        USER_ACCURACY.replace("dot_blink_error", str(dot_deviation)).replace("dash_blink_error", str(dash_deviation)) + '\n' + accuracy_report,
         WHITE,
         screen,
         font
