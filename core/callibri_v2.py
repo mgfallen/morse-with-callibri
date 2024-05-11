@@ -1,9 +1,12 @@
-def sensor_found(scanner, sensors): #scanner is used when running scanner.start()
-   for i in range(len(sensors)):
-       print('Sensor %s' % sensors[i])
+from neurosdk.scanner import Scanner
+from neurosdk.sensor import Sensor
+import numpy as np
 
-import neurosdk.cmn_types
-import neurosdk.scanner
-scanner = neurosdk.scanner.Scanner([neurosdk.cmn_types.SensorFamily.LECallibri])
-scanner.sensorsChanged = sensor_found
-scanner.start()  
+def onCallibriSignalDataReceived(sensor: Sensor, data):
+   sensor.data = np.ravel([np.array(i.Samples) for i in data]) #WARNING: you must add 'Sensor.data = []' to the code.
+
+def find_sensors(scanner: Scanner):
+    sensors_found = scanner.sensors()
+    while not sensors_found:
+        sensors_found = scanner.sensors()
+    return sensors_found

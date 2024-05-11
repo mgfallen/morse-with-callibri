@@ -1,26 +1,15 @@
 import neurosdk.scanner
-from callibri import sensorFound # do not run 'import callibri' because there is no entry point
-import neurosdk
+from callibri_v2 import onCallibriSignalDataReceived, find_sensors
+from neurosdk.cmn_types import SensorFamily, SensorCommand
+from neurosdk.sensor import Sensor
 import numpy as np
 import pygame
+import matplotlib.pyplot as plt
 import sys
 import time
 
-pygame.init()
-pygame.font.init()
-
-scanner = neurosdk.scanner.Scanner
-scanner.sensorsChanged = 
-scanner.start()  
-    
-WIDTH, HEIGHT = (1200, 800)
-SAMPLING_FREQUENCY = 9600
-BLACK = (0,0,0)
-WHITE = (255,255,255)
-RED = (255,0,0)
-GREEN = (0,255,0)
-BLUE = (0,0,255)
-ORANGE = (255,165,0)
+######## it allows to save incoming signal right in the Sensor instance
+Sensor.data = []
 
 def draw_text_in_the_middle(text: str, 
                             color: pygame.Color | tuple[int,int,int],
@@ -35,14 +24,30 @@ def draw_text_in_the_middle(text: str,
         screen.blit(
             font.render(line, True, WHITE),
             ((WIDTH - line_size[0])//2, (HEIGHT + line_size[1] * i * 2)//2)
-            ) 
+            )
         
-        
-def get_signal(sampling_frequency, size ,*args, **kwargs):
-    print("Imitating of receiving signal...")
-    time.sleep(size)
-    return np.random.uniform(0, 100, (int(sampling_frequency * size),))
+####### Connect to callibri #######
+scanner = neurosdk.scanner.Scanner([SensorFamily.LECallibri])
+scanner.start()
+sensor_info = find_sensors(scanner)[0]
+sensor = scanner.create_sensor(sensor_info)
+sensor.signalDataReceived = onCallibriSignalDataReceived
+sensor.connect()
+sensor.exec_command(SensorCommand.StartSignal)
+    
+WIDTH, HEIGHT = (1200, 800)
+SAMPLING_FREQUENCY = 9600
+BLACK = (0,0,0)
+WHITE = (255,255,255)
+RED = (255,0,0)
+GREEN = (0,255,0)
+BLUE = (0,0,255)
+ORANGE = (255,165,0)
 
+
+pygame.init()
+pygame.font.init()
+ 
 
 ###### Greeting ######
 screen = pygame.display.set_mode((WIDTH,HEIGHT))
@@ -82,13 +87,16 @@ while preparing_for_no_blinking:
 
 #getting noise value
 noise_data = []
-for time_left in range(NO_BLINKING_TIME,0, -1):
+start = time.time()
+end = start + NO_BLINKING_TIME
+time_left = NO_BLINKING_TIME
+while time_left > 0:
     screen.fill(ORANGE)
-    draw_text_in_the_middle(NO_BLINKING_TEXT.replace('time_left',str(time_left)), WHITE, screen, font)
+    draw_text_in_the_middle(NO_BLINKING_TEXT.replace('time_left',str(round(time_left))), WHITE, screen, font)
     pygame.display.flip()
-    noise_data.extend(get_signal(SAMPLING_FREQUENCY, 1))
-noise_value = np.mean(noise_data)
-
+    noise_data.extend(sensor.data)
+    time_left = end - time.time()
+noise_value = np.max(noise_data)
 #TODO: Check that user really was calm by standard deviation or something
 
 ###### Getting thresholds ######
@@ -105,9 +113,11 @@ USER_HIGH_ACCURACY_REPORT = ("Погрешность моргания доста
 USER_LOW_ACCURACY_REPORT = ("Погрешность моргания пока высокая."
                             "Продолжайте калибровку.")
 
-OPTIMAL_CONVERGENCE = 30 # optimal difference between two epochs. low convergence shows that user is blinking with persistently same values
+OPTIMAL_DEVIATION = 30 # optimal difference between two epoch threshold. low deviation shows that user is blinking with persistently same values
 OPTIMAL_ITERATIONS = 5 # user will likely start giving persistent blinks within this iteration amount
 ITERATION_SIZE = 10 # amount of prompted dash or dots within an iteration
+MIN_PROMPT_INTERVAL= 0.5
+MAX_PROMPT_INTERVAL = 2
 
 #preparing
 screen.fill(BLACK)
@@ -127,8 +137,9 @@ dot_threshold = 0
 dash_threshold = 0
 
 iteration = 1
-dot_threshold_peaks = []
-dash_threshold_peaks = []
+#fill with garbage to avoid errors with computing deviation on first iteration
+dot_threshold_peaks = [1000]
+dash_threshold_peaks = [1000]
 
 dot_blink_error = 1000
 dash_blink_error = 1000
@@ -137,16 +148,21 @@ dash_blink_error = 1000
 calibrating = True
 while calibrating:
     for epoch in range(ITERATION_SIZE):
+        epoch_data = []
         mode = np.random.random() < 0.5 # prompting dot or dash
         text = PROMPTING_DOT_BLINK_TEXT if mode == 0 else PROMPTING_DASH_BLINK_TEXT
         screen.fill(ORANGE)
         draw_text_in_the_middle(text, BLACK, screen, font)
         #make a line that appears and dissapears instantly for user to react
         pygame.display.flip()
-        interval = np.random.randint(5,20) / 10 # for user to get persistent in different intervals between blinks.
+        interval = np.random.uniform(MIN_PROMPT_INTERVAL, MAX_PROMPT_INTERVAL) # for user to get persistent in different intervals between blinks.
 
-        #get signal smh
-        epoch_data = get_signal(SAMPLING_FREQUENCY, interval)# get data for *interval* of time
+        start = time.time()
+        end = start + interval
+        time_left = interval
+        while time_left > 0:
+            epoch_data.extend(sensor.data)
+            time_left = end - time.time()
         (dot_threshold_peaks if mode == 0 else dash_threshold_peaks).append(np.max(epoch_data)) 
 
         screen.fill(ORANGE) # for message to dissapear. it will make user react on next message better
@@ -158,11 +174,11 @@ while calibrating:
     last_dash_blink_error = dash_blink_error
     dot_blink_error = np.round(np.std(dot_threshold_peaks),2)
     dash_blink_error = np.round(np.std(dash_threshold_peaks),2)
-    dot_convergence = np.abs(last_dot_blink_error - dot_blink_error)
-    dash_convergence = np.abs(last_dash_blink_error - dash_blink_error)
+    dot_deviation = np.abs(dot_threshold_peaks[-2] - dot_threshold_peaks[-1])
+    dash_deviation = np.abs(last_dash_blink_error - dash_blink_error)
 
     accuracy_report = (USER_HIGH_ACCURACY_REPORT 
-                       if dot_convergence < OPTIMAL_CONVERGENCE and dash_convergence < OPTIMAL_CONVERGENCE
+                       if dot_deviation < OPTIMAL_DEVIATION and dash_deviation < OPTIMAL_DEVIATION
                   else USER_LOW_ACCURACY_REPORT)
 
     dot_threshold = np.mean(dot_threshold_peaks)
@@ -170,6 +186,8 @@ while calibrating:
 
     #persistence of user blink strength
     #NOTE: accuracy is counted on all calibration epochs, not current one
+    print('peaks',dot_threshold_peaks, dash_threshold_peaks)
+    print()
     draw_text_in_the_middle(
         USER_ACCURACY.replace("dot_blink_error", str(dot_convergence)).replace("dash_blink_error", str(dash_convergence)) + '\n' + accuracy_report,
         WHITE,
@@ -195,4 +213,6 @@ while calibrating:
 
     iteration += 1
 
+del scanner
+del sensor
 pygame.quit()

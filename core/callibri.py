@@ -206,7 +206,6 @@ def on_callibri_signal_data_received(sensor, data):
            bSignal_plot, bAccX_plot, bAccY_plot, bAccZ_plot, bGyroX_plot, bGyroY_plot, bGyroZ_plot, app_instance
     
     updateFrequency = round(samplerate/5)  # Обновление графиков 2 раза в секунду
-    
     for j in range(len(data)):
         for i in range(9):
             # Обновление основных массивов данных
