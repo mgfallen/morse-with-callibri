@@ -1,11 +1,12 @@
 from neurosdk.scanner import Scanner
 from neurosdk.sensor import Sensor
+import numpy as np
 
-class SavingDataSensor(Sensor):
-    data = [] # when receiving data, save it to this variable.
-def sensor_found(scanner: Scanner, sensors):
-   for i in range(len(sensors)):
-       print('Sensor %s' % sensors[i])
+def onCallibriSignalDataReceived(sensor: Sensor, data):
+   sensor.data = np.ravel([np.array(i.Samples) for i in data]) #WARNING: you must add 'Sensor.data = []' to the code.
 
-def on_callibri_signal_data_received(sensor: SavingDataSensor, data):
-    sensor.data = data
+def find_sensors(scanner: Scanner):
+    sensors_found = scanner.sensors()
+    while not sensors_found:
+        sensors_found = scanner.sensors()
+    return sensors_found
