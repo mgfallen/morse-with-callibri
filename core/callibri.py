@@ -241,22 +241,22 @@ def on_callibri_signal_data_received(sensor, data):
                 app_instance.update_plot([bSignal_plot, bAccX_plot, bAccY_plot, bAccZ_plot, samplerate])
             
             if curPos == samplerate:
-                # print("EDF > #"+str(edfCount))
+                print("EDF > #"+str(edfCount))
                 edfCount += 1
 
-                # TODO это значение сигнала является нашей метрикой о "секундном" интервале
-                # signal_rms = np.sqrt(np.mean(np.square(bSignal)))
+                #TODO это значение сигнала является нашей метрикой о "секундном" интервале
+                signal_rms = np.sqrt(np.mean(np.square(bSignal)))
 
-                # if edfCount % 2 != 0:
-                #     print("===============")
-                #     print(f"   Моргайте    {signal_rms}")
-                #     print("===============")
+                if edfCount % 2 != 0:
+                    print("===============")
+                    print(f"   Моргайте    {signal_rms}")
+                    print("===============")
 
-                # if edfCount % 2 == 0:
-                #     if signal_rms > strong_signal_threshold:
-                #         print(f">>>>ТИРЕ<<<< {signal_rms}")
-                #     elif signal_rms > weak_signal_threshold:
-                #         print(f"====ТОЧКА==== {signal_rms}")
+                if edfCount % 2 == 0:
+                    if signal_rms > strong_signal_threshold:
+                        print(f">>>>ТИРЕ<<<< {signal_rms}")
+                    elif signal_rms > weak_signal_threshold:
+                        print(f"====ТОЧКА==== {signal_rms}")
 
                 curPos = 0
 

@@ -1,26 +1,13 @@
+import neurosdk.cmn_types
 import neurosdk.scanner
-from callibri import sensorFound # do not run 'import callibri' because there is no entry point
-import neurosdk
+import neurosdk.sensor
+from callibri_v2 import sensor_found, SavingDataSensor, on_callibri_signal_data_received
+from neurosdk.scanner import Scanner
+from neurosdk.cmn_types import SensorFamily, SensorCommand
 import numpy as np
 import pygame
 import sys
 import time
-
-pygame.init()
-pygame.font.init()
-
-scanner = neurosdk.scanner.Scanner
-scanner.sensorsChanged = 
-scanner.start()  
-    
-WIDTH, HEIGHT = (1200, 800)
-SAMPLING_FREQUENCY = 9600
-BLACK = (0,0,0)
-WHITE = (255,255,255)
-RED = (255,0,0)
-GREEN = (0,255,0)
-BLUE = (0,0,255)
-ORANGE = (255,165,0)
 
 def draw_text_in_the_middle(text: str, 
                             color: pygame.Color | tuple[int,int,int],
@@ -37,12 +24,32 @@ def draw_text_in_the_middle(text: str,
             ((WIDTH - line_size[0])//2, (HEIGHT + line_size[1] * i * 2)//2)
             ) 
         
-        
-def get_signal(sampling_frequency, size ,*args, **kwargs):
-    print("Imitating of receiving signal...")
-    time.sleep(size)
-    return np.random.uniform(0, 100, (int(sampling_frequency * size),))
 
+pygame.init()
+pygame.font.init()
+
+###### Connecting to callibri ######
+scanner = Scanner([SensorFamily.LECallibri])
+scanner.sensorsChanged = sensor_found
+scanner.start() 
+sensors_found =  scanner.sensors()
+#seek for sensors, then connect to first found
+while not sensors_found:
+    sensors_found = scanner.sensors()
+
+sensor = SavingDataSensor(sensors_found[0])
+sensor.connect()
+sensor.exec_command(SensorCommand.StartSignal)
+sensor.callibriSignalDataReceived = on_callibri_signal_data_received
+
+WIDTH, HEIGHT = (1200, 800)
+SAMPLING_FREQUENCY = 9600
+BLACK = (0,0,0)
+WHITE = (255,255,255)
+RED = (255,0,0)
+GREEN = (0,255,0)
+BLUE = (0,0,255)
+ORANGE = (255,165,0)
 
 ###### Greeting ######
 screen = pygame.display.set_mode((WIDTH,HEIGHT))
@@ -86,7 +93,7 @@ for time_left in range(NO_BLINKING_TIME,0, -1):
     screen.fill(ORANGE)
     draw_text_in_the_middle(NO_BLINKING_TEXT.replace('time_left',str(time_left)), WHITE, screen, font)
     pygame.display.flip()
-    noise_data.extend(get_signal(SAMPLING_FREQUENCY, 1))
+    noise_data.extend(sensor.data) ################ TODO: check if data stores signal correctly
 noise_value = np.mean(noise_data)
 
 #TODO: Check that user really was calm by standard deviation or something
@@ -146,7 +153,7 @@ while calibrating:
         interval = np.random.randint(5,20) / 10 # for user to get persistent in different intervals between blinks.
 
         #get signal smh
-        epoch_data = get_signal(SAMPLING_FREQUENCY, interval)# get data for *interval* of time
+        epoch_data = sensor.data ################ TODO: check if it works correctly
         (dot_threshold_peaks if mode == 0 else dash_threshold_peaks).append(np.max(epoch_data)) 
 
         screen.fill(ORANGE) # for message to dissapear. it will make user react on next message better

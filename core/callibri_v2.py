@@ -1,9 +1,11 @@
-def sensor_found(scanner, sensors): #scanner is used when running scanner.start()
+from neurosdk.scanner import Scanner
+from neurosdk.sensor import Sensor
+
+class SavingDataSensor(Sensor):
+    data = [] # when receiving data, save it to this variable.
+def sensor_found(scanner: Scanner, sensors):
    for i in range(len(sensors)):
        print('Sensor %s' % sensors[i])
 
-import neurosdk.cmn_types
-import neurosdk.scanner
-scanner = neurosdk.scanner.Scanner([neurosdk.cmn_types.SensorFamily.LECallibri])
-scanner.sensorsChanged = sensor_found
-scanner.start()  
+def on_callibri_signal_data_received(sensor: SavingDataSensor, data):
+    sensor.data = data
