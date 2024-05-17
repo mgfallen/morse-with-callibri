@@ -131,8 +131,6 @@ while preparing_for_calibrating:
 
 
 #getting thresholds
-high_threshold = 0
-low_threshold = 0
 TEST_DATA_LENGTH = 15
 test_morse: str = ''.join([random.choice(('*','-',' ')) for _ in range(TEST_DATA_LENGTH)])
 
@@ -141,7 +139,8 @@ draw_text_in_the_middle(''.join(test_morse), WHITE, screen, font)
 pygame.display.flip()
 
 completed_morse: str = ''
-epoch_signals: list[list[float]] = []
+epoch_dash_signals: list[list[float]] = []
+epoch_dot_signals: list[list[float]] = []
 epoch: list[float] = []
 for symbol in test_morse:
     start = time.time() + datetime.datetime.now().microsecond/1e6
@@ -153,7 +152,29 @@ for symbol in test_morse:
     draw_text_in_the_middle(completed_morse + '_' * (len(test_morse) - len(completed_morse)), # make completed symbols be green
                             GREEN, screen, font) 
     pygame.display.flip()
-    epoch_signals.append(epoch)
+    if symbol == '-':
+        epoch_dash_signals.append(epoch)
+    elif symbol == ' ':
+        epoch_dot_signals.append(epoch)
+
+#calculate thresholds by mean. 
+#TODO:  Find optimal constant to make the thresholds lower for accepting weaker user input.
+ACCEPTABLE_BLINK_ERROR = 0
+
+dash_threshold = np.mean(epoch_dash_signals) - ACCEPTABLE_BLINK_ERROR
+dot_threshold = np.mean(epoch_dot_signals) - ACCEPTABLE_BLINK_ERROR
+
+#plot and research
+for dash_epoch, i in enumerate(epoch_dash_signals):
+    plt.plot(range(len(epoch)), epoch)
+    plt.plot(range(len(epoch)), [dash_threshold] * len(epoch), 'red')
+    plt.title("Dash epoch", i)
+
+for dot_epoch, i in enumerate(epoch_dot_signals):
+    plt.plot(range(len(epoch)), epoch)
+    plt.plot(range(len(epoch)), [dot_threshold] * len(epoch), 'red')
+    plt.title("Dash epoch", i)
+
 del scanner
 del sensor
 pygame.quit()
