@@ -1,4 +1,0 @@
-pyneurosdk2==1.0.7
-numpy==1.26.4
-PyQt5==5.15.10
-matplotlib==3.8.4
