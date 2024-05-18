@@ -11,8 +11,8 @@ import sys
 import time
 import datetime
 
-######## it allows to save incoming signal right in the Sensor instance
-Sensor.data = []
+######## this allows to save incoming signal from callback function right in the Sensor instance
+Sensor.data = np.array([])
 
 def draw_text_in_the_middle(text: str, 
                             color: pygame.Color | tuple[int,int,int],
@@ -73,14 +73,13 @@ while greeting:
 
 
 ##### Setting speed #####
-epoch_time = 0.5
+epoch_time = 1
 epoch_size = epoch_time * SAMPLING_FREQUENCY
 #TODO: Make changing symbol typing speed available. 
-#FIXME: indicating speed requires checking exact time, that python can't handle fast
 
 
 ###### Getting noise value ######
-NO_BLINKING_TIME = 0
+NO_BLINKING_TIME = 0.1
 PREPARING_FOR_NO_BLINKING_TEXT = (f"Вам нужно будет не моргать и сидеть спокойно {NO_BLINKING_TIME} секунд.\n "
                                    "Как будете готовы, нажмите любую клавишу.")
 NO_BLINKING_TEXT = ("Не моргайте. Осталось time_left секунд..")
@@ -131,50 +130,59 @@ while preparing_for_calibrating:
 
 
 #getting thresholds
-TEST_DATA_LENGTH = 15
-test_morse: str = ''.join([random.choice(('*','-',' ')) for _ in range(TEST_DATA_LENGTH)])
-
+TEST_DATA_LENGTH = 10
+test_morse: str = ''.join([random.choice(('*')*3 + ('-')*3 + ('.')) for _ in range(TEST_DATA_LENGTH)]) # make chances of appearance of dot or dash higher
 screen.fill(ORANGE)
 draw_text_in_the_middle(''.join(test_morse), WHITE, screen, font)
 pygame.display.flip()
 
-completed_morse: str = ''
 epoch_dash_signals: list[list[float]] = []
 epoch_dot_signals: list[list[float]] = []
 epoch: list[float] = []
-for symbol in test_morse:
-    start = time.time() + datetime.datetime.now().microsecond/1e6
-    while time.time() + datetime.datetime.now().microsecond/1e6 < start + epoch_time:
+
+for i, symbol in enumerate(test_morse):
+    start = time.time()
+    while time.time() < start + epoch_time:
         epoch.extend(sensor.data)
-        ...
-    completed_morse += symbol
-    draw_text_in_the_middle(''.join(test_morse), WHITE, screen, font)
-    draw_text_in_the_middle(completed_morse + '_' * (len(test_morse) - len(completed_morse)), # make completed symbols be green
-                            GREEN, screen, font) 
+    #FIXME: drawing completed data is terrible now
+    indicator = [' '] * TEST_DATA_LENGTH
+    indicator[i] = '-' # indicate current symbol
+    draw_text_in_the_middle(''.join(test_morse) + '\n' + ''.join(indicator), WHITE, screen, font)
     pygame.display.flip()
     if symbol == '-':
         epoch_dash_signals.append(epoch)
-    elif symbol == ' ':
+    elif symbol == '*':
         epoch_dot_signals.append(epoch)
+    epoch = []
 
 #calculate thresholds by mean. 
 #TODO:  Find optimal constant to make the thresholds lower for accepting weaker user input.
 ACCEPTABLE_BLINK_ERROR = 0
-
-dash_threshold = np.mean(epoch_dash_signals) - ACCEPTABLE_BLINK_ERROR
-dot_threshold = np.mean(epoch_dot_signals) - ACCEPTABLE_BLINK_ERROR
+#np.mean can't be used because arrays are inhomgenous
+dash_threshold = sum([max(epoch) for epoch in epoch_dash_signals])  / len(epoch_dash_signals) - ACCEPTABLE_BLINK_ERROR
+dot_threshold  = sum([max(epoch) for epoch in epoch_dot_signals])  /  len(epoch_dot_signals)  - ACCEPTABLE_BLINK_ERROR
 
 #plot and research
-for dash_epoch, i in enumerate(epoch_dash_signals):
-    plt.plot(range(len(epoch)), epoch)
-    plt.plot(range(len(epoch)), [dash_threshold] * len(epoch), 'red')
-    plt.title("Dash epoch", i)
 
-for dot_epoch, i in enumerate(epoch_dot_signals):
-    plt.plot(range(len(epoch)), epoch)
-    plt.plot(range(len(epoch)), [dot_threshold] * len(epoch), 'red')
-    plt.title("Dash epoch", i)
+axes = [plt.subplot(100 * (i+1)) for i in range(len(epoch_dash_signals))]
+for i, dash_epoch in enumerate(epoch_dash_signals):
+    axes[i].plot(range(len(dash_epoch)), dash_epoch)
+    axes[i].plot(range(len(dash_epoch)), [dash_threshold] * len(dash_epoch), 'red')
 
+plt.title("Dash epochs")
+plt.tight_layout()
+plt.show()
+
+axes = [plt.subplot(100 * (i+1)) for _ in range(len(epoch_dash_signals))]
+for i, dot_epoch in enumerate(epoch_dot_signals):
+    axes[i].plot(range(len(dot_epoch)), dot_epoch)
+    axes[i].plot(range(len(dot_epoch)), [dot_threshold] * len(dot_epoch), 'red')
+
+plt.title("Dot epochs")
+plt.tight_layout()
+plt.show()
+
+###########
 del scanner
 del sensor
 pygame.quit()
